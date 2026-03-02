@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOIR IDS — Intrusion Detection System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-dark:      #080808;
+    --bg-panel:     #111111;
+    --bg-entry:     #1a1a1a;
+    --fg-white:     #e8e8e8;
+    --fg-dim:       #666666;
+    --accent-red:   #c0392b;
+    --accent-amber: #e67e22;
+    --accent-green: #27ae60;
+    --accent-blue:  #2980b9;
+    --sev-high:     #e74c3c;
+    --sev-med:      #e67e22;
+    --sev-low:      #f1c40f;
+    --sev-info:     #2ecc71;
+    --mono: 'Share Tech Mono', monospace;
+    --body: 'Rajdhani', 'Share Tech Mono', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-dark);
+    color: var(--fg-white);
+    font-family: var(--body);
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* ── LAYOUT ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    background: #0a0a0a;
+    border-bottom: 2px solid var(--accent-red);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  #header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(192,57,43,0.03) 2px, rgba(192,57,43,0.03) 4px);
+    pointer-events: none;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 28px;
+    letter-spacing: 8px;
+    color: #fff;
+    line-height: 1;
+  }
+  .logo span { color: var(--accent-red); }
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: #444;
+    letter-spacing: 3px;
+    margin-top: 4px;
+  }
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #444;
+    text-align: right;
+    line-height: 1.9;
+  }
+  .header-meta span { color: var(--accent-amber); }
+
+  /* ── MAIN AREA ── */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── LEFT SIDEBAR ── */
+  #sidebar {
+    width: 290px;
+    flex-shrink: 0;
+    background: var(--bg-dark);
+    border-right: 1px solid #1a1a1a;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid #1e1e1e;
+    padding: 12px 14px;
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--accent-amber);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #1e1e1e;
+  }
+
+  /* file drop zone */
+  #drop-zone {
+    border: 1px dashed #2a2a2a;
+    background: #0d0d0d;
+    padding: 16px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 8px;
+  }
+  #drop-zone:hover, #drop-zone.dragover {
+    border-color: var(--accent-amber);
+    background: #111;
+  }
+  #drop-zone .drop-icon { font-size: 22px; margin-bottom: 6px; }
+  #drop-zone .drop-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #555;
+  }
+  #drop-zone .drop-text span { color: var(--accent-amber); }
+
+  #file-info {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent-amber);
+    word-break: break-all;
+    line-height: 1.6;
+    min-height: 14px;
+  }
+
+  /* threshold inputs */
+  .thresh-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 7px;
+  }
+  .thresh-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: #888;
+    flex: 1;
+  }
+  .thresh-input {
+    width: 52px;
+    background: #0d0d0d;
+    border: 1px solid #2a2a2a;
+    color: var(--fg-white);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 6px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .thresh-input:focus { border-color: var(--accent-amber); }
+
+  /* rules list */
+  .rule-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: #555;
+  }
+  .rule-dot { font-size: 10px; flex-shrink: 0; }
+
+  /* buttons */
+  .btn {
+    width: 100%;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    border: none;
+    cursor: pointer;
+    color: var(--fg-white);
+    text-align: left;
+    transition: filter 0.15s, transform 0.1s;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn:hover { filter: brightness(1.2); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; filter: none; }
+  .btn-red    { background: var(--accent-red); }
+  .btn-blue   { background: var(--accent-blue); }
+  .btn-dark   { background: #1e3a4a; }
+  .btn-muted  { background: #2a2a2a; }
+  .btn-sep    { height: 1px; background: #222; margin: 6px 0; width: 100%; }
+
+  /* ── RIGHT FEED ── */
+  #feed-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-dark);
+  }
+
+  #feed-header {
+    background: var(--bg-panel);
+    border-bottom: 1px solid #1e1e1e;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  #feed-header .feed-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--accent-amber);
+  }
+
+  #alert-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-red);
+    font-weight: bold;
+  }
+
+  /* filter bar */
+  #filter-bar {
+    background: #0d0d0d;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .filt-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border: 1px solid #2a2a2a;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filt-btn:hover, .filt-btn.active { color: var(--fg-white); border-color: var(--accent-amber); background: #1a1a1a; }
+  .filt-btn[data-sev="HIGH"]:hover,   .filt-btn[data-sev="HIGH"].active   { border-color: var(--sev-high); color: var(--sev-high); }
+  .filt-btn[data-sev="MEDIUM"]:hover, .filt-btn[data-sev="MEDIUM"].active { border-color: var(--sev-med); color: var(--sev-med); }
+  .filt-btn[data-sev="LOW"]:hover,    .filt-btn[data-sev="LOW"].active    { border-color: var(--sev-low); color: var(--sev-low); }
+  .filt-btn[data-sev="INFO"]:hover,   .filt-btn[data-sev="INFO"].active   { border-color: var(--sev-info); color: var(--sev-info); }
+
+  #search-box {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    background: #0d0d0d;
+    border: 1px solid #2a2a2a;
+    color: var(--fg-white);
+    outline: none;
+    width: 200px;
+    margin-left: auto;
+  }
+  #search-box:focus { border-color: var(--accent-amber); }
+
+  /* feed */
+  #feed {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: #080808;
+  }
+  #feed::-webkit-scrollbar { width: 5px; }
+  #feed::-webkit-scrollbar-thumb { background: #1e1e1e; border-radius: 2px; }
+
+  .feed-entry {
+    padding: 8px 16px 6px;
+    border-bottom: 1px solid #0f0f0f;
+    transition: background 0.1s;
+  }
+  .feed-entry:hover { background: #0e0e0e; }
+  .feed-entry.hidden { display: none; }
+
+  .entry-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 3px;
+  }
+  .entry-time { color: #444; font-size: 10px; }
+  .entry-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border-radius: 1px;
+  }
+  .badge-HIGH   { background: rgba(231,76,60,0.15); color: var(--sev-high); border: 1px solid rgba(231,76,60,0.3); }
+  .badge-MEDIUM { background: rgba(230,126,34,0.15); color: var(--sev-med); border: 1px solid rgba(230,126,34,0.3); }
+  .badge-LOW    { background: rgba(241,196,15,0.12); color: var(--sev-low); border: 1px solid rgba(241,196,15,0.3); }
+  .badge-INFO   { background: rgba(46,204,113,0.1); color: var(--sev-info); border: 1px solid rgba(46,204,113,0.25); }
+
+  .entry-label { color: var(--fg-white); font-size: 11px; font-weight: bold; }
+  .entry-linenum { color: #333; font-size: 9px; }
+  .entry-detail { color: #777; font-size: 10px; margin-left: 2px; margin-bottom: 2px; }
+  .entry-raw {
+    color: #2e2e2e;
+    font-size: 9px;
+    word-break: break-all;
+    font-style: italic;
+    margin-left: 2px;
+    margin-top: 1px;
+  }
+  .entry-sep { color: #1e1e1e; font-size: 9px; margin-top: 5px; }
+
+  .feed-info {
+    padding: 6px 16px;
+    color: var(--accent-amber);
+    font-size: 10px;
+    font-style: italic;
+  }
+  .feed-info.error { color: var(--sev-high); }
+
+  /* progress bar */
+  #progress-wrap {
+    height: 2px;
+    background: #111;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent-red);
+    transition: width 0.1s linear;
+  }
+
+  /* status bar */
+  #statusbar {
+    background: #060606;
+    border-top: 1px solid var(--accent-red);
+    padding: 5px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  #status-msg {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--fg-dim);
+  }
+  .status-credit {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: #2a2a2a;
+  }
+
+  /* live pulse */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--sev-info);
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.2s infinite;
+    margin-right: 4px;
+  }
+
+  /* scan animation */
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+  .scanning::after {
+    content: '';
+    position: fixed;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(192,57,43,0.4), transparent);
+    animation: scanline 2s linear infinite;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* empty state */
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #222;
+    font-family: var(--mono);
+    gap: 10px;
+    user-select: none;
+  }
+  #empty-state .empty-icon { font-size: 48px; opacity: 0.3; }
+  #empty-state .empty-text { font-size: 11px; letter-spacing: 2px; }
+
+  /* scrollbar for sidebar */
+  #sidebar::-webkit-scrollbar { width: 3px; }
+  #sidebar::-webkit-scrollbar-track { background: #080808; }
+  #sidebar::-webkit-scrollbar-thumb { background: #1e1e1e; }
+
+  /* Tooltip */
+  .tooltip-wrap { position: relative; }
+  .tooltip-wrap .tooltip-box {
+    display: none;
+    position: absolute;
+    left: 105%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #aaa;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div>
+      <div class="logo">NOIR<span> IDS</span></div>
+      <div class="logo-sub">INTRUSION DETECTION SYSTEM &nbsp;|&nbsp; LOG ANALYSER &nbsp;|&nbsp; DFIS UTILITY</div>
+    </div>
+    <div class="header-meta">
+      <div>AUTHOR &nbsp;<span>Radhesh Mutreja</span></div>
+      <div>COURSE &nbsp;<span>DFIS</span></div>
+      <div>VERSION <span>2.0 — WEB</span></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- LEFT SIDEBAR -->
+    <div id="sidebar">
+
+      <!-- Log File -->
+      <div class="panel">
+        <div class="panel-title">① Log File</div>
+        <div id="drop-zone" onclick="openFilePicker()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <div class="drop-icon">📂</div>
+          <div class="drop-text">Click or <span>drag &amp; drop</span> log file</div>
+          <div class="drop-text" style="margin-top:3px">auth.log, syslog, any .log</div>
+        </div>
+        <div id="file-info">No file selected</div>
+        <input type="file" id="file-input" accept=".log,.txt,*" style="display:none" onchange="onFileSelected(event)">
+      </div>
+
+      <!-- Thresholds -->
+      <div class="panel">
+        <div class="panel-title">② Thresholds</div>
+        <div class="thresh-row">
+          <span class="thresh-label">Brute force limit</span>
+          <input class="thresh-input" id="brute-thresh" type="number" value="5" min="1" max="999" title="Flag IP/user after N failed logins">
+        </div>
+        <div class="thresh-row">
+          <span class="thresh-label">IP repeat limit</span>
+          <input class="thresh-input" id="ip-thresh" type="number" value="10" min="1" max="9999" title="Flag IP after N total appearances">
+        </div>
+        <div class="thresh-row">
+          <span class="thresh-label">Suspicious hour (from)</span>
+          <input class="thresh-input" id="susp-start" type="number" value="0" min="0" max="23" title="Start of suspicious hour window (0-23)">
+        </div>
+        <div class="thresh-row">
+          <span class="thresh-label">Suspicious hour (to)</span>
+          <input class="thresh-input" id="susp-end" type="number" value="6" min="0" max="23" title="End of suspicious hour window (0-23)">
+        </div>
+      </div>
+
+      <!-- Detection Rules -->
+      <div class="panel">
+        <div class="panel-title">③ Detection Rules</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-high)">●</span>Failed / invalid SSH logins</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-high)">●</span>Brute force (threshold hit)</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-high)">●</span>Root / direct root login</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-high)">●</span>User created / deleted</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-high)">●</span>Distributed attack (4+ IPs)</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-high)">●</span>Max auth exceeded</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-med)">●</span>Sudo command executed</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-med)">●</span>Auth failure (PAM)</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-med)">●</span>Suspicious hour activity</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-med)">●</span>High-frequency IP</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-low)">●</span>Successful SSH login</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-info)">●</span>Session open / close</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-info)">●</span>SSH public key login</div>
+        <div class="rule-item"><span class="rule-dot" style="color:var(--sev-info)">●</span>Connection closed</div>
+      </div>
+
+      <!-- Controls -->
+      <div class="panel">
+        <div class="panel-title">④ Controls</div>
+        <button class="btn btn-red"  id="btn-analyse" onclick="startAnalysis()" disabled>▶&nbsp; Analyse File</button>
+        <button class="btn btn-blue" id="btn-live"    onclick="startLive()"    disabled>📡&nbsp; Live Monitor</button>
+        <button class="btn btn-muted" id="btn-stop"   onclick="stopMonitor()"  disabled>⏹&nbsp; Stop</button>
+        <div class="btn-sep"></div>
+        <button class="btn btn-muted" onclick="clearFeed()">✖&nbsp; Clear Feed</button>
+        <button class="btn btn-dark"  onclick="exportReport()">📊&nbsp; Generate HTML Report</button>
+      </div>
+
+    </div><!-- /sidebar -->
+
+    <!-- FEED AREA -->
+    <div id="feed-area">
+      <div id="feed-header">
+        <span class="feed-title">ALERT FEED</span>
+        <span id="alert-count">Alerts: 0</span>
+      </div>
+
+      <!-- Filter bar -->
+      <div id="filter-bar">
+        <button class="filt-btn active" data-sev="ALL"    onclick="setFilter('ALL',this)">ALL</button>
+        <button class="filt-btn" data-sev="HIGH"   onclick="setFilter('HIGH',this)">HIGH</button>
+        <button class="filt-btn" data-sev="MEDIUM" onclick="setFilter('MEDIUM',this)">MEDIUM</button>
+        <button class="filt-btn" data-sev="LOW"    onclick="setFilter('LOW',this)">LOW</button>
+        <button class="filt-btn" data-sev="INFO"   onclick="setFilter('INFO',this)">INFO</button>
+        <input id="search-box" type="text" placeholder="Search alerts…" oninput="onSearch(this.value)">
+      </div>
+
+      <div id="progress-wrap"><div id="progress-bar"></div></div>
+
+      <!-- Feed -->
+      <div id="feed">
+        <div id="empty-state">
+          <div class="empty-icon">🛡️</div>
+          <div class="empty-text">SELECT A LOG FILE TO BEGIN</div>
+        </div>
+      </div>
+
+      <!-- Statusbar -->
+      <div id="statusbar">
+        <span id="status-msg">Ready.</span>
+        <span class="status-credit">Educational Use Only &nbsp;|&nbsp; DFIS Project &nbsp;|&nbsp; © 2026 Radhesh Mutreja</span>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div>
+
+<script>
+// ============================================================
+//  STATE
+// ============================================================
+let selectedFile     = null;
+let monitoring       = false;
+let alertCount       = 0;
+let alertLog         = [];
+let currentFilter    = 'ALL';
+let searchQuery      = '';
+let liveInterval     = null;
+let liveFileHandle   = null;
+let liveOffset       = 0;
+
+// ============================================================
+//  DETECTION PATTERNS  (mirrors Python LOG_PATTERNS)
+// ============================================================
+const LOG_PATTERNS = [
+  { re: /Failed password for (?:invalid user )?(\S+) from ([\d.]+)/i, sev:'HIGH',   label:'BRUTE FORCE / FAILED LOGIN',   desc:'Failed SSH password attempt' },
+  { re: /Invalid user (\S+) from ([\d.]+)/i,                          sev:'HIGH',   label:'INVALID USER ATTEMPT',          desc:'Login attempt with non-existent username' },
+  { re: /sudo:.*COMMAND=(.*)/i,                                        sev:'MEDIUM', label:'SUDO COMMAND EXECUTED',         desc:'Privilege escalation via sudo' },
+  { re: /useradd|adduser|new user.*name=(\S+)/i,                       sev:'HIGH',   label:'NEW USER CREATED',              desc:'A new system user account was created' },
+  { re: /userdel|deluser/i,                                             sev:'HIGH',   label:'USER DELETED',                  desc:'A system user account was deleted' },
+  { re: /Accepted password for (\S+) from ([\d.]+)/i,                  sev:'LOW',    label:'SUCCESSFUL SSH LOGIN',          desc:'User logged in successfully via SSH' },
+  { re: /Accepted publickey for (\S+) from ([\d.]+)/i,                 sev:'INFO',   label:'SSH KEY LOGIN',                 desc:'User logged in via SSH public key' },
+  { re: /session opened for user (\S+)/i,                              sev:'INFO',   label:'SESSION OPENED',                desc:'A new user session was opened' },
+  { re: /session closed for user (\S+)/i,                              sev:'INFO',   label:'SESSION CLOSED',                desc:'A user session was closed' },
+  { re: /ROOT LOGIN/i,                                                  sev:'HIGH',   label:'ROOT LOGIN',                    desc:'Direct root login detected' },
+  { re: /authentication failure.*user=(\S+)/i,                         sev:'MEDIUM', label:'AUTH FAILURE',                  desc:'PAM authentication failure' },
+  { re: /POSSIBLE BREAK-IN ATTEMPT/i,                                   sev:'HIGH',   label:'BREAK-IN ATTEMPT',             desc:'System flagged a possible intrusion' },
+  { re: /Connection closed by ([\d.]+)/i,                              sev:'INFO',   label:'CONNECTION CLOSED',             desc:'SSH connection closed' },
+  { re: /error: maximum authentication attempts exceeded.*from ([\d.]+)/i, sev:'HIGH', label:'MAX AUTH EXCEEDED',          desc:'Too many authentication attempts from one IP' },
+  { re: /Disconnecting.*too many authentication failures/i,            sev:'HIGH',   label:'AUTH FAILURES DISCONNECT',      desc:'Client disconnected after repeated failures' },
+];
+
+// Per-session counters
+const failedAttempts = {};
+const ipCounts       = {};
+const userIpMap      = {};
+
+// ============================================================
+//  FILE HANDLING
+// ============================================================
+function openFilePicker() {
+  document.getElementById('file-input').click();
+}
+
+function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (file) setFile(file);
+  event.target.value = '';
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+function onDragLeave() {
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+}
+
+function setFile(file) {
+  selectedFile = file;
+  document.getElementById('file-info').textContent = `📄 ${file.name}\n${(file.size/1024).toFixed(1)} KB`;
+  setStatus(`File selected: ${file.name}`, 'amber');
+  document.getElementById('btn-analyse').disabled = false;
+  document.getElementById('btn-live').disabled = false;
+  clearEmptyState();
+  postInfo(`📄 File loaded: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
+}
+
+// ============================================================
+//  DETECTION ENGINE
+// ============================================================
+function analyzeLine(line, lineNum, counters) {
+  const { failed, ips, userIps } = counters;
+  const bruteThresh = parseInt(document.getElementById('brute-thresh').value) || 5;
+  const ipThresh    = parseInt(document.getElementById('ip-thresh').value) || 10;
+  const suspStart   = parseInt(document.getElementById('susp-start').value) || 0;
+  const suspEnd     = parseInt(document.getElementById('susp-end').value) || 6;
+
+  for (const p of LOG_PATTERNS) {
+    const m = p.re.exec(line);
+    if (!m) continue;
+
+    const user = m[1] || 'unknown';
+    const ip   = m[2] || null;
+
+    let detail = p.desc;
+    if (ip) {
+      detail += `  |  IP: ${ip}`;
+      ips[ip] = (ips[ip] || 0) + 1;
+      if (user && user !== 'unknown') {
+        userIps[user] = userIps[user] || new Set();
+        userIps[user].add(ip);
+      }
+    }
+    if (user && user !== 'unknown') detail += `  |  User: ${user}`;
+
+    // Brute-force counter
+    if (/FAILED LOGIN|INVALID USER|AUTH FAILURE/.test(p.label)) {
+      const key = ip || user;
+      failed[key] = (failed[key] || 0) + 1;
+      if (failed[key] === bruteThresh) {
+        postAlert('HIGH', '⚠  BRUTE FORCE DETECTED',
+          `${ip ? 'IP' : 'User'} ${key} has reached ${bruteThresh} failed attempts`,
+          lineNum, '');
+      }
+    }
+
+    // IP repeat
+    if (ip && ips[ip] === ipThresh) {
+      postAlert('MEDIUM', '🔁  HIGH FREQUENCY IP',
+        `IP ${ip} has appeared ${ips[ip]} times in this log`, lineNum, '');
+    }
+
+    // Distributed attack
+    if (user && user !== 'unknown' && userIps[user] && userIps[user].size === 4) {
+      postAlert('HIGH', '🎯  DISTRIBUTED ATTACK',
+        `User '${user}' targeted from ${userIps[user].size} different IPs`, lineNum, '');
+    }
+
+    // Suspicious hour
+    checkSuspiciousHour(line, lineNum, suspStart, suspEnd);
+
+    postAlert(p.sev, p.label, detail, lineNum, line);
+    return true;
+  }
+  return false;
+}
+
+function checkSuspiciousHour(line, lineNum, start, end) {
+  let hour = null;
+  const syslog = /\w{3}\s+\d{1,2}\s+(\d{2}):\d{2}:\d{2}/.exec(line);
+  if (syslog) hour = parseInt(syslog[1]);
+  const iso = /\d{4}-\d{2}-\d{2}T(\d{2}):\d{2}:\d{2}/.exec(line);
+  if (iso) hour = parseInt(iso[1]);
+  if (hour === null) return;
+  if (hour >= start && hour < end) {
+    postAlert('MEDIUM', '🌙  SUSPICIOUS HOUR',
+      `Activity at ${String(hour).padStart(2,'0')}:xx — within suspicious window (${String(start).padStart(2,'0')}:00–${String(end).padStart(2,'0')}:00)`,
+      lineNum, line);
+  }
+}
+
+// ============================================================
+//  ANALYSIS — full file
+// ============================================================
+async function startAnalysis() {
+  if (!selectedFile) return;
+  resetCounters();
+  clearFeed();
+  monitoring = true;
+  setRunning(true);
+  setStatus('Reading file…', 'amber');
+  document.getElementById('app').classList.add('scanning');
+
+  try {
+    const text  = await selectedFile.text();
+    const lines = text.split('\n');
+    const total = lines.length;
+    const counters = { failed: {}, ips: {}, userIps: {} };
+
+    postInfo(`📄 Loaded ${total.toLocaleString()} lines from: ${selectedFile.name}`);
+    setStatus(`Analysing ${total.toLocaleString()} lines…`, 'amber');
+
+    // Process in chunks to keep UI responsive
+    let i = 0;
+    const CHUNK = 500;
+    function processChunk() {
+      if (!monitoring) {
+        postInfo('⏹  Analysis stopped by user.');
+        finish(i, total, 0);
+        return;
+      }
+      const end = Math.min(i + CHUNK, total);
+      for (; i < end; i++) {
+        if (lines[i].trim()) analyzeLine(lines[i], i + 1, counters);
+      }
+      document.getElementById('progress-bar').style.width = `${(i / total * 100).toFixed(1)}%`;
+      if (i < total) {
+        requestAnimationFrame(processChunk);
+      } else {
+        finish(i, total, 1);
+      }
+    }
+    processChunk();
+  } catch(e) {
+    postInfo(`❌ Error reading file: ${e.message}`, true);
+    setStatus('Error.', 'red');
+    setRunning(false);
+    document.getElementById('app').classList.remove('scanning');
+  }
+}
+
+function finish(scanned, total, done) {
+  document.getElementById('app').classList.remove('scanning');
+  document.getElementById('progress-bar').style.width = '100%';
+  setTimeout(() => document.getElementById('progress-bar').style.width = '0', 1200);
+  const msg = done
+    ? `✅ Complete — ${total.toLocaleString()} lines scanned, ${alertCount} alerts raised.`
+    : `⏹ Stopped at line ${scanned.toLocaleString()} of ${total.toLocaleString()}.`;
+  postInfo(msg);
+  setStatus(msg, done ? 'green' : 'dim');
+  monitoring = false;
+  setRunning(false);
+}
+
+// ============================================================
+//  LIVE MONITOR (polls file for new content)
+// ============================================================
+async function startLive() {
+  if (!selectedFile) return;
+  resetCounters();
+  clearFeed();
+  monitoring = true;
+  setRunning(true);
+  setStatus('Starting live monitor…', 'green');
+  postInfo(`👁 Live monitoring: ${selectedFile.name}`);
+
+  liveOffset = selectedFile.size; // start at end
+  const counters = { failed: {}, ips: {}, userIps: {} };
+  let partial = '';
+
+  liveInterval = setInterval(async () => {
+    if (!monitoring) { clearInterval(liveInterval); return; }
+    try {
+      // Re-read from last offset
+      const freshFile = selectedFile; // same File object in browser
+      const blob = freshFile.slice(liveOffset);
+      const chunk = await blob.text();
+      if (!chunk) return;
+      liveOffset += blob.size;
+      const combined = partial + chunk;
+      const parts = combined.split('\n');
+      partial = parts.pop();
+      for (const line of parts) {
+        if (line.trim()) analyzeLine(line, null, counters);
+      }
+    } catch(e) { /* ignore */ }
+  }, 800);
+
+  setStatus('Live monitoring active…', 'green');
+  // Add live dot to status
+  document.getElementById('status-msg').innerHTML = '<span class="live-dot"></span>Live monitoring active…';
+}
+
+// ============================================================
+//  STOP
+// ============================================================
+function stopMonitor() {
+  monitoring = false;
+  if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+  document.getElementById('app').classList.remove('scanning');
+  postInfo('⏹ Monitoring stopped.');
+  setStatus('Stopped.', 'dim');
+  setRunning(false);
+}
+
+// ============================================================
+//  COUNTERS & HELPERS
+// ============================================================
+function resetCounters() {
+  alertCount = 0;
+  alertLog   = [];
+  updateAlertCount();
+}
+
+function updateAlertCount() {
+  document.getElementById('alert-count').textContent = `Alerts: ${alertCount}`;
+}
+
+function setRunning(running) {
+  document.getElementById('btn-analyse').disabled = running;
+  document.getElementById('btn-live').disabled    = running;
+  document.getElementById('btn-stop').disabled    = !running;
+}
+
+function setStatus(msg, colour) {
+  const el = document.getElementById('status-msg');
+  el.innerHTML = msg;
+  el.style.color = colour === 'amber' ? 'var(--accent-amber)'
+    : colour === 'green' ? 'var(--accent-green)'
+    : colour === 'red'   ? 'var(--sev-high)'
+    : 'var(--fg-dim)';
+}
+
+// ============================================================
+//  FEED OUTPUT
+// ============================================================
+function clearEmptyState() {
+  const es = document.getElementById('empty-state');
+  if (es) es.remove();
+}
+
+function postAlert(severity, label, detail, lineNum, rawLine) {
+  clearEmptyState();
+  const now = new Date();
+  const ts  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const raw = (rawLine || '').trim().substring(0, 200);
+
+  alertLog.push({ time: ts, severity, label, detail, raw, lineNum });
+  alertCount++;
+  updateAlertCount();
+
+  const feed = document.getElementById('feed');
+  const entry = document.createElement('div');
+  entry.className = 'feed-entry';
+  entry.dataset.severity = severity;
+  entry.dataset.text = `${label} ${detail} ${raw}`.toLowerCase();
+
+  const lineRef = lineNum ? `<span class="entry-linenum">[line ${lineNum}]</span>` : '';
+  const rawHtml = raw ? `<div class="entry-raw">↳ Raw: ${escHtml(raw)}</div>` : '';
+
+  entry.innerHTML = `
+    <div class="entry-header">
+      <span class="entry-time">${ts}</span>
+      <span class="entry-badge badge-${severity}">${severity}</span>
+      <span class="entry-label">${escHtml(label)}</span>
+      ${lineRef}
+    </div>
+    <div class="entry-detail">↳ ${escHtml(detail)}</div>
+    ${rawHtml}
+    <div class="entry-sep">${'─'.repeat(80)}</div>`;
+
+  // Apply current filter / search
+  if (currentFilter !== 'ALL' && currentFilter !== severity) entry.classList.add('hidden');
+  if (searchQuery && !entry.dataset.text.includes(searchQuery)) entry.classList.add('hidden');
+
+  feed.appendChild(entry);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function postInfo(msg, isError = false) {
+  clearEmptyState();
+  const feed = document.getElementById('feed');
+  const div  = document.createElement('div');
+  div.className = `feed-info${isError ? ' error' : ''}`;
+  div.textContent = `◆  ${msg}`;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function clearFeed() {
+  const feed = document.getElementById('feed');
+  feed.innerHTML = '';
+  resetCounters();
+  setStatus('Feed cleared.', 'dim');
+}
+
+// ============================================================
+//  FILTER + SEARCH
+// ============================================================
+function setFilter(sev, btn) {
+  currentFilter = sev;
+  document.querySelectorAll('.filt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.feed-entry').forEach(row => {
+    const sevMatch    = sev === 'ALL' || row.dataset.severity === sev;
+    const searchMatch = !searchQuery || row.dataset.text.includes(searchQuery);
+    row.classList.toggle('hidden', !sevMatch || !searchMatch);
+  });
+}
+
+function onSearch(q) {
+  searchQuery = q.toLowerCase();
+  document.querySelectorAll('.feed-entry').forEach(row => {
+    const sevMatch    = currentFilter === 'ALL' || row.dataset.severity === currentFilter;
+    const searchMatch = !searchQuery || row.dataset.text.includes(searchQuery);
+    row.classList.toggle('hidden', !sevMatch || !searchMatch);
+  });
+}
+
+// ============================================================
+//  HTML REPORT EXPORT
+// ============================================================
+function exportReport() {
+  if (!alertLog.length) {
+    alert('No alerts to export. Run an analysis first.');
+    return;
+  }
+  const html = buildReport();
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `noir_ids_report_${new Date().toISOString().replace(/[:.]/g,'-').substring(0,19)}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('HTML report downloaded.', 'green');
+}
+
+function buildReport() {
+  const now   = new Date().toLocaleString();
+  const fname = selectedFile ? selectedFile.name : 'Unknown';
+  const total = alertLog.length;
+  const counts = { HIGH:0, MEDIUM:0, LOW:0, INFO:0 };
+  const labelCounts = {};
+  for (const e of alertLog) {
+    if (counts[e.severity] !== undefined) counts[e.severity]++;
+    labelCounts[e.label] = (labelCounts[e.label]||0) + 1;
+  }
+  const topLabels = Object.entries(labelCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  const sevCard = (col, label, val) =>
+    `<div class="sc" style="border-top:3px solid ${col}"><div class="sv" style="color:${col}">${val}</div><div class="sl">${label}</div></div>`;
+
+  const summaryCards = [
+    sevCard('#e74c3c','HIGH',counts.HIGH),
+    sevCard('#e67e22','MEDIUM',counts.MEDIUM),
+    sevCard('#f1c40f','LOW',counts.LOW),
+    sevCard('#2ecc71','INFO',counts.INFO),
+    sevCard('#e8e8e8','TOTAL',total),
+  ].join('');
+
+  const topRows = topLabels.map(([l,c])=>`<tr><td>${escHtml(l)}</td><td style="text-align:center;color:#e67e22;font-weight:bold">${c}</td></tr>`).join('');
+
+  const sevBadge = sev => {
+    const map = { HIGH:['#e74c3c','#2d0a0a'], MEDIUM:['#e67e22','#2d1a00'], LOW:['#f1c40f','#2a2200'], INFO:['#2ecc71','#062010'] };
+    const [fg,bg] = map[sev]||['#e8e8e8','#222'];
+    return `<span style="display:inline-block;padding:2px 7px;font-size:10px;letter-spacing:1px;background:${bg};color:${fg};border:1px solid ${fg};border-radius:1px">${sev}</span>`;
+  };
+
+  const alertRows = alertLog.map((e,i)=>{
+    const raw = e.raw ? `<div style="font-size:10px;color:#3a3a3a;word-break:break-all;font-style:italic;margin-top:4px">${escHtml(e.raw)}</div>` : '';
+    const ln  = e.lineNum ? `<span style="font-size:10px;color:#444;margin-left:6px">[line ${e.lineNum}]</span>` : '';
+    return `<tr data-severity="${e.severity}">
+      <td style="color:#333;width:40px;text-align:center">${i+1}</td>
+      <td style="color:#555;white-space:nowrap;width:70px">${e.time}</td>
+      <td style="width:80px">${sevBadge(e.severity)}</td>
+      <td style="color:#e8e8e8;font-weight:bold">${escHtml(e.label)}${ln}</td>
+      <td style="color:#888">${escHtml(e.detail)}${raw}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Noir IDS — Alert Report</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080808;color:#e8e8e8;font-family:'Consolas',monospace;font-size:13px}
+.hdr{background:#0d0d0d;border-bottom:2px solid #c0392b;padding:28px 40px;display:flex;justify-content:space-between;align-items:flex-start}
+.logo{font-size:36px;letter-spacing:6px;color:#fff}.logo span{color:#c0392b}
+.logo-sub{font-size:9px;color:#444;letter-spacing:3px;margin-top:5px}
+.meta{font-size:10px;color:#555;text-align:right;line-height:2}.meta span{color:#e67e22}
+.container{max-width:1200px;margin:0 auto;padding:36px 40px}
+.stitle{font-size:9px;letter-spacing:4px;color:#e67e22;text-transform:uppercase;margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid #1e1e1e}
+.sg{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:36px}
+.sc{background:#111;padding:18px 14px;text-align:center}
+.sv{font-size:34px;font-weight:bold;line-height:1;margin-bottom:7px}
+.sl{font-size:9px;letter-spacing:2px;color:#555}
+.top{width:100%;border-collapse:collapse;margin-bottom:36px;font-size:11px}
+.top th{background:#1a1a1a;color:#e67e22;padding:9px 12px;text-align:left;letter-spacing:2px;font-size:9px;border-bottom:1px solid #333}
+.top td{padding:9px 12px;border-bottom:1px solid #1a1a1a;color:#aaa}
+.top tr:hover td{background:#151515;color:#e8e8e8}
+.at{width:100%;border-collapse:collapse;font-size:11px}
+.at thead th{background:#111;color:#e67e22;padding:11px 10px;text-align:left;font-size:9px;letter-spacing:2px;border-bottom:2px solid #c0392b}
+.at td{padding:9px 10px;vertical-align:top;border-bottom:1px solid #111}
+.at tr:nth-child(even){background:#0e0e0e}
+.at tr:hover td{background:#141414}
+.fbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fb{font-family:monospace;font-size:10px;padding:5px 12px;border:1px solid #333;background:#111;color:#888;cursor:pointer}
+.fb:hover,.fb.active{border-color:#e67e22;color:#e8e8e8;background:#1a1a1a}
+.fb[data-sev="HIGH"]:hover,.fb[data-sev="HIGH"].active{border-color:#e74c3c;color:#e74c3c}
+.fb[data-sev="MEDIUM"]:hover,.fb[data-sev="MEDIUM"].active{border-color:#e67e22;color:#e67e22}
+.fb[data-sev="LOW"]:hover,.fb[data-sev="LOW"].active{border-color:#f1c40f;color:#f1c40f}
+.fb[data-sev="INFO"]:hover,.fb[data-sev="INFO"].active{border-color:#2ecc71;color:#2ecc71}
+.sb{font-family:monospace;font-size:10px;padding:5px 10px;background:#111;border:1px solid #333;color:#e8e8e8;outline:none;margin-left:auto;width:200px}
+.sb:focus{border-color:#e67e22}
+.hidden{display:none!important}
+.ftr{margin-top:50px;padding:16px 40px;border-top:1px solid #1a1a1a;font-size:9px;color:#333;display:flex;justify-content:space-between}
+</style></head><body>
+<div class="hdr">
+  <div><div class="logo">NOIR<span> IDS</span></div><div class="logo-sub">INTRUSION DETECTION SYSTEM — ALERT REPORT</div></div>
+  <div class="meta">
+    <div>GENERATED <span>${escHtml(now)}</span></div>
+    <div>LOG FILE &nbsp;<span>${escHtml(fname)}</span></div>
+    <div>AUTHOR &nbsp;&nbsp;<span>Radhesh Mutreja</span></div>
+    <div>COURSE &nbsp;&nbsp;<span>DFIS</span></div>
+  </div>
+</div>
+<div class="container">
+  <div class="stitle">① SUMMARY</div>
+  <div class="sg">${summaryCards}</div>
+  <div class="stitle">② TOP ALERT TYPES</div>
+  <table class="top"><thead><tr><th>ALERT TYPE</th><th style="text-align:center">COUNT</th></tr></thead><tbody>${topRows}</tbody></table>
+  <div class="stitle">③ FULL ALERT LIST</div>
+  <div class="fbar">
+    <button class="fb active" data-sev="ALL" onclick="filt(this)">ALL (${total})</button>
+    <button class="fb" data-sev="HIGH"   onclick="filt(this)">HIGH (${counts.HIGH})</button>
+    <button class="fb" data-sev="MEDIUM" onclick="filt(this)">MEDIUM (${counts.MEDIUM})</button>
+    <button class="fb" data-sev="LOW"    onclick="filt(this)">LOW (${counts.LOW})</button>
+    <button class="fb" data-sev="INFO"   onclick="filt(this)">INFO (${counts.INFO})</button>
+    <input class="sb" type="text" placeholder="Search alerts…" oninput="srch(this.value)">
+  </div>
+  <table class="at" id="at">
+    <thead><tr><th>#</th><th>TIME</th><th>SEVERITY</th><th>ALERT TYPE</th><th>DETAIL</th></tr></thead>
+    <tbody id="ab">${alertRows}</tbody>
+  </table>
+</div>
+<div class="ftr"><span>NOIR IDS v2.0 — DFIS Project — Educational Use Only</span><span>© 2026 Radhesh Mutreja</span></div>
+<script>
+function filt(btn){
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const s=btn.dataset.sev;
+  document.querySelectorAll('#ab tr').forEach(r=>r.classList.toggle('hidden',s!=='ALL'&&r.dataset.severity!==s));
+}
+function srch(q){
+  const lq=q.toLowerCase();
+  document.querySelectorAll('#ab tr').forEach(r=>{
+    r.classList.toggle('hidden',lq&&!r.textContent.toLowerCase().includes(lq));
+  });
+}
+<\/script>
+</body></html>`;
+}
+
+// ============================================================
+//  UTILS
+// ============================================================
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+postInfo('🛡️  Noir IDS ready. Select or drag a log file, then click Analyse or Live Monitor.');
+</script>
+</body>
+</html>
