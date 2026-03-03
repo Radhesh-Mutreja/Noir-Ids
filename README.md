@@ -19,17 +19,17 @@ All processing runs **entirely in your browser** — no data is ever uploaded an
 ```bash
 # 1. Clone the repo
 git clone https://github.com/your-username/noir-ids.git
-cd noir-ids
+cd ids
 
 # 2. Open in browser
 # Windows
-start noir-ids.html
+start ids.html
 
 # macOS
-open noir-ids.html
+open ids.html
 
 # Linux
-xdg-open noir-ids.html
+xdg-open ids.html
 ```
 
 Then:
@@ -156,7 +156,7 @@ The report is a single `.html` file that works offline in any browser.
 
 ```
 noir-ids/
-├── noir-ids.html   # Complete application — everything in one file
+├── ids.html   # Complete application — everything in one file
 └── README.md       # This file
 ```
 
